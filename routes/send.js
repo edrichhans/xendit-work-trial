@@ -30,14 +30,76 @@ router.post('/', async function(req, res) {
           },
           attempts: process.env.MAX_RETRIES // number of attempts before job finishes
         })
-        return res.send({message: 'Message added to queue', success: true})
+        return res.send({request_id: request._id, message: 'Message added to queue', success: true})
       }
       else {
         return res.status(403).send({message: 'The user does not have this URL.', success: false})
       }
     }
     else {
-      return res.status(400).send({message: 'User not found.', success: false})
+      return res.status(403).send({message: 'User not found.', success: false})
+    }
+  }
+  catch(err) {
+    console.log(err)
+    return res.status(400).send({message: "There was an error processing your request", success: false})
+  }
+})
+
+router.get('/status/:request_id', async (req, res) => {
+  try {
+    const {request_id} = req.params
+    const { API_key } = req.query
+
+    const user = await req.context.models.User.findOne({
+      API_key: API_key,
+    })
+
+    if(user) {
+      if (!request_id.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).send({message: 'Invalid request ID', success: false})
+      }
+      const request = await req.context.models.Request.findById(request_id).lean()
+      if(request) {
+        return res.send({...request, success: true})
+      }
+      else {
+        return res.status(400).send({message: 'Request not found', success: false})
+      }
+    }
+    else {
+      return res.status(403).send({message: 'User not found.', success: false})
+    }
+  }
+  catch(err) {
+    console.log(err)
+    return res.status(400).send({message: "There was an error processing your request", success: false})
+  }
+})
+
+router.get('/status', async (req, res) => {
+  try {
+    const { API_key } = req.query
+
+    const user = await req.context.models.User.findOne({
+      API_key: API_key,
+    })
+
+    if(user) {
+      const urls = await req.context.models.CallbackURL.find({
+        user: user._id
+      })
+
+      const requests = await req.context.models.Request.find({
+        callbackUrlId: {
+          $in: urls.map(u => u._id)
+        }
+      }).lean()
+
+      return res.send(requests)
+    }
+    else {
+      return res.status(403).send({message: 'User not found.', success: false})
     }
   }
   catch(err) {

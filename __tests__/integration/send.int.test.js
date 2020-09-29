@@ -2,9 +2,13 @@ const supertest = require('supertest');
 const request = supertest(spacepackApiApp);
 const url = 'https://webhook.site/8e67f026-d8ce-4c6e-8abf-886c26ff5acb'
 var queue = require('../../queue/queue')
+var urlId = null
+
+afterEach(async () => {
+  await console.log(await queue.getJobCounts())
+})
 
 describe('Send', function(){
-  var urlId = null
   it('should create a new user', async function() {
     const user = await request.post('/signup').send({
       username: 'userName',
@@ -37,7 +41,7 @@ describe('Send', function(){
 
     expect(response.body.message).toBe('User not found.')
     expect(response.body.success).toBe(false)
-    expect(response.status).toBe(400)
+    expect(response.status).toBe(403)
   })
 
   it('should be able to send test notification', async function() {
@@ -102,5 +106,32 @@ describe('Retry', function() {
 
     expect(response.body.message).toBe('Message added to queue')
     expect(response.status).toBe(200)
+  })
+})
+
+describe('Query', function(){
+  var requestId = null
+
+  it('should be able to send non-test notification', async function() {
+    const response = await request.post('/send').send({
+      API_key: API_key,
+      URL_id: urlId,
+      payload: JSON.stringify({integration: true})
+    })
+
+    expect(response.body.message).toBe('Message added to queue')
+    expect(response.body.success).toBe(true)
+    expect(response.status).toBe(200)
+    expect(response.body.request_id).not.toBeUndefined()
+    requestId = response.body.request_id
+  })
+
+  it('should be able to query', async () => {
+    const response = await request.get(`/send/status/${requestId}?API_key=${API_key}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.success).toBe(true)
+    expect(response.body.status).not.toBeUndefined()
+    expect(response.body.status).not.toBeNull()
   })
 })

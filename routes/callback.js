@@ -1,5 +1,6 @@
 var express = require('express')
 var router = express.Router()
+var queue = require('../queue/queue')
 
 router.post('/subscribe', async function(req, res) {
   const { API_key, url } = req.body
@@ -9,6 +10,12 @@ router.post('/subscribe', async function(req, res) {
   })
 
   if(user) {
+    if(!validateUrl(url)) {
+      return res.status(403).send({
+        message: 'URL is not valid.',
+        success: false,
+      })
+    }
     const callbackUrl = await req.context.models.CallbackURL.create({
       user: user._id,
       URL: url,
@@ -67,5 +74,11 @@ router.post('/activate', async function(req, res) {
     res.status(400).send({message: 'Invalid URL ID', success: false})
   }
 })
+
+function validateUrl(url){
+    //eslint-disable-next-line
+    let re = /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/;
+    return re.test(String(url).toLowerCase())
+  }
 
 module.exports = router

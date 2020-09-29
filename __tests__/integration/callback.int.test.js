@@ -29,15 +29,6 @@ describe('Subscribe', function() {
     urlId = response.body.URL_id
   })
 
-  it('should fail to activate', async function() {
-    const response = await request.post('/callback/activate').send({
-      URL_id: 'fail_id',
-      API_key: API_key,
-    })
-
-    expect(response.status).toBe(400)
-  })
-
   it('should activate', async function() {
     const response = await request.post('/callback/activate').send({
       URL_id: urlId,

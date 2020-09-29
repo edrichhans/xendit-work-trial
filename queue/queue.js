@@ -10,18 +10,42 @@ var messageQueue = new Queue('messages', {
   }
 }); // Specify Redis connection using object
 
-messageQueue.process(async function(job){
-  await sendCallback(job.data)
-  if(job.attemptsMade >= process.env.MAX_RETRIES - 1) {
-    try {
-      console.log('Request Failed.')
-      await models.Request.updateOne({_id: job.data.request_id}, {status: 'failed'})
-    }
-    catch(err) {
-      console.log('unable to update DB')
-    }
+var requestQueue = new Queue('request', {
+  redis: {
+    port: process.env.REDIS_PORT,
+    host: process.env.REDIS_URL,
+    password: process.env.REDIS_PASSWORD
   }
-});
+})
+
+requestQueue.process(async (job, done) => {
+  const { request_id, status } = job.data
+
+  if(!request_id || !status) {
+    console.log(`Invalid request_id / status`)
+    return await done()
+  }
+  if (!request_id.match(/^[0-9a-fA-F]{24}$/)) {
+    console.log(`Invalid request_id`)
+    return await done()
+  }
+  await models.Request.updateOne({_id: request_id}, {status: status})
+  console.log(`Updated ${request_id} to ${status}`)
+  await done()
+})
+
+// messageQueue.process(parseInt(process.env.CONCURRENCY) || 5, async function(job){
+//   if(job.attemptsMade >= process.env.MAX_RETRIES - 1) {
+//     try {
+//       console.log('Request Failed.')
+//       await models.Request.updateOne({_id: job.data.request_id}, {status: 'failed'})
+//     }
+//     catch(err) {
+//       console.log('unable to update DB')
+//     }
+//   }
+//   await sendCallback(job.data)
+// });
 
 async function sendCallback(params) {
   return new Promise(async function(resolve, reject) {
@@ -29,7 +53,7 @@ async function sendCallback(params) {
     try {
       const data = {API_key, test: test?true:false, payload: payload}
       axios.post(url, data).then(async ack => {
-        console.log('Notification successfully sent to: ' + url)
+        console.log(`Notification successfully sent to: ${url}, Request ID: ${request_id}`)
         try {
           await models.Request.updateOne({_id: request_id}, {status: 'sent'})
         }
@@ -39,7 +63,7 @@ async function sendCallback(params) {
         if(ack) return resolve(ack)//done()
         // return resolve(ack)
       }).catch(err => {
-        console.log('Notification sending failed. Retrying.')
+        console.log(`Notification sending failed. Retrying, Request ID: ${request_id}`)
         reject(err)
       })
     }
