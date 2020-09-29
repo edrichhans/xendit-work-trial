@@ -52,7 +52,7 @@ describe('Send', function(){
       const response = await request.post('/send').send({
         API_key: API_key,
         URL_id: urlId,
-        payload: JSON.stringify({integration: true})
+        payload: {volume: true}
       })
 
       expect(response.body.message).toBe('Message added to queue')
@@ -80,11 +80,11 @@ describe('Retry', function() {
   })
 
   it('should add the message to the queue', async function() {
-    for(let i = 0; i < 5; i++) {
+    for(let i = 0; i < 10; i++) {
       const response = await request.post('/send').send({
         API_key: API_key,
         URL_id: fakeUrlId,
-        payload: JSON.stringify({integration: true})
+        payload: {volume: true}
       })
 
       expect(response.body.message).toBe('Message added to queue')

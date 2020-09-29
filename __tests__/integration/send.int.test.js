@@ -36,7 +36,7 @@ describe('Send', function(){
   it('should fail to send the test notification (no user)', async function() {
     const response = await request.post('/send').send({
       URL_id: urlId,
-      payload: JSON.stringify({integration: true})
+      payload: {integration: true}
     })
 
     expect(response.body.message).toBe('User not found.')
@@ -48,7 +48,7 @@ describe('Send', function(){
     const response = await request.post('/send').send({
       API_key: API_key,
       URL_id: urlId,
-      payload: JSON.stringify({integration: true})
+      payload: {integration: true}
     })
 
     expect(response.body.message).toBe('Message added to queue')

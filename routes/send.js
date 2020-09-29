@@ -4,7 +4,8 @@ var router = express.Router()
 
 router.post('/', async function(req, res) {
   try {
-    const { API_key, URL_id, payload } = req.body
+    const { API_key, URL_id } = req.body
+    var payload = req.body.payload
     const user = await req.context.models.User.findOne({
       API_key: API_key,
     })
@@ -16,6 +17,7 @@ router.post('/', async function(req, res) {
       })
 
       if(url) {
+        payload = JSON.stringify(payload)
         const request = await req.context.models.Request.create({
           callbackUrlId: url._id,
           status: 'pending',
